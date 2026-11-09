@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>張丞佑BMI計算</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Noto Sans TC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            font-family: 'Noto Sans TC', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Glassmorphism Panel */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        /* Smooth Slider Custom Style */
+        input[type=range] {
+            accent-color: #10b981;
+        }
+
+        /* Gauge Meter Needle Transition */
+        .needle {
+            transition: transform 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-origin: bottom center;
+        }
+
+        /* Floating animations */
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: floatSlow 4s ease-in-out infinite;
+        }
+
+        /* Confetti/Score Floating Animation */
+        @keyframes scoreUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.3); }
+        }
+        .score-float {
+            position: absolute;
+            animation: scoreUp 0.8s ease-out forwards;
+            font-weight: 900;
+            color: #10b981;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="w-screen min-h-screen bg-gradient-to-br from-emerald-50 via-teal-100 to-cyan-100 text-slate-800 flex flex-col justify-between overflow-x-hidden">
+
+    <!-- HEADER / TOP BAR -->
+    <header class="w-full z-30 p-3 sm:p-4 glass-card shadow-sm sticky top-0 flex flex-wrap justify-between items-center gap-2">
+        <!-- Title Left -->
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-tr from-emerald-500 to-teal-400 text-white p-2.5 sm:p-3 rounded-2xl shadow-lg flex items-center justify-center">
+                <i class="fa-solid fa-heart-pulse text-2xl sm:text-3xl animate-pulse"></i>
+            </div>
+            <div>
+                <h1 class="text-xl sm:text-2xl md:text-3xl font-black text-slate-800 tracking-tight leading-none">
+                    張丞佑BMI計算
+                </h1>
+                <p class="text-xs sm:text-sm text-teal-700 font-semibold mt-1 flex items-center gap-1">
+                    <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-xs font-extrabold">全民健康指南</span>
+                    <span class="hidden sm:inline">掌握體態數據・打造永續健康人生</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Stats / Score Right -->
+        <div class="flex items-center gap-2 sm:gap-4">
+            <!-- Health Level -->
+            <div class="bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-xl text-center shadow-sm">
+                <div class="text-[10px] sm:text-xs text-teal-800 font-bold uppercase tracking-wider">健康稱號</div>
+                <div id="rank-display" class="text-xs sm:text-sm font-black text-teal-900">🌱 健康萌芽</div>
+            </div>
+
+            <!-- Current BMI Score -->
+            <div class="bg-sky-50 border border-sky-200 px-3 py-1.5 rounded-xl text-center shadow-sm">
+                <div class="text-[10px] sm:text-xs text-sky-800 font-bold uppercase tracking-wider">最新 BMI</div>
+                <div id="header-bmi-display" class="text-lg sm:text-xl font-black text-sky-700">--</div>
+            </div>
+
+            <!-- Total Score -->
+            <div class="bg-emerald-100 border border-emerald-300 px-3 py-1.5 rounded-xl text-center shadow-sm">
+                <div class="text-[10px] sm:text-xs text-emerald-800 font-bold uppercase tracking-wider">健康積分</div>
+                <div id="score-display" class="text-xl sm:text-2xl font-black text-emerald-700">0</div>
+            </div>
+
+            <!-- Reset Button -->
+            <button id="btn-reset" title="重新測量" class="bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-700 font-bold p-2.5 sm:px-4 sm:py-2 rounded-xl transition flex items-center gap-1 text-sm shadow-sm">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span class="hidden md:inline">重置</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN GAME AREA -->
+    <main class="w-full max-w-6xl mx-auto p-4 sm:p-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- LEFT PANEL: INPUT FORM & CALCULATOR (5 COLS) -->
+        <section class="lg:col-span-5 glass-card p-5 sm:p-6 rounded-3xl shadow-xl space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-teal-600"></i> 身高體體重設定
+                </h2>
+                <span class="text-xs text-slate-500">衛福部成人BMI標準</span>
+            </div>
+
+            <!-- Height Input -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <label for="height-input" class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-ruler-vertical text-emerald-600"></i> 身高 (Height)
+                    </label>
+                    <div class="flex items-center gap-1">
+                        <input type="number" id="height-input" value="168" min="100" max="220" class="w-20 text-right font-black text-lg bg-emerald-50 border border-emerald-300 rounded-lg px-2 py-0.5 text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <span class="text-sm font-bold text-slate-500">cm</span>
+                    </div>
+                </div>
+                <input type="range" id="height-slider" min="100" max="220" value="168" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- Weight Input -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <label for="weight-input" class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-weight-scale text-teal-600"></i> 體重 (Weight)
+                    </label>
+                    <div class="flex items-center gap-1">
+                        <input type="number" id="weight-input" value="62" min="30" max="150" class="w-20 text-right font-black text-lg bg-teal-50 border border-teal-300 rounded-lg px-2 py-0.5 text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        <span class="text-sm font-bold text-slate-500">kg</span>
+                    </div>
+                </div>
+                <input type="range" id="weight-slider" min="30" max="150" value="62" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <!-- Calculate Button -->
+            <button id="btn-calculate" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black py-3.5 px-6 rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition duration-150 text-lg flex items-center justify-center gap-2">
+                <i class="fa-solid fa-calculator"></i>
+                <span>計算與分析 BMI</span>
+            </button>
+
+            <!-- Quick Quiz Mini Challenge -->
+            <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 shadow-sm space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-brain text-amber-600"></i> 健康快問快答 (+50 分)
+                    </h3>
+                    <span id="quiz-status" class="text-[10px] bg-amber-200 text-amber-800 font-bold px-2 py-0.5 rounded-full">第 1 題</span>
+                </div>
+                <p id="quiz-question" class="text-xs font-bold text-slate-700">衛福部建議成年人的標準 BMI 範圍是多少？</p>
+                <div id="quiz-options" class="grid grid-cols-2 gap-2 text-xs">
+                    <!-- Options injected by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT PANEL: DASHBOARD & CHARACTER (7 COLS) -->
+        <section class="lg:col-span-7 space-y-6">
+            
+            <!-- Result Overview Card -->
+            <div class="glass-card p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+                
+                <!-- Character Avatar Display -->
+                <div class="flex flex-col items-center justify-center min-w-[140px]">
+                    <div id="avatar-box" class="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-tr from-emerald-100 to-teal-200 border-4 border-white shadow-md flex items-center justify-center text-6xl text-emerald-600 animate-float transition-all duration-300">
+                        <i id="avatar-icon" class="fa-solid fa-face-smile"></i>
+                    </div>
+                    <span id="avatar-status-tag" class="mt-2 text-xs font-black px-3 py-1 rounded-full bg-emerald-500 text-white shadow-sm">
+                        體態極佳
+                    </span>
+                </div>
+
+                <!-- BMI Dynamic Meter & Stat -->
+                <div class="flex-1 w-full space-y-3 text-center md:text-left">
+                    <div>
+                        <span class="text-xs font-extrabold text-slate-500 uppercase">BMI 數值記錄</span>
+                        <div class="flex items-baseline justify-center md:justify-start gap-2">
+                            <span id="bmi-value" class="text-4xl sm:text-5xl font-black text-slate-800">22.0</span>
+                            <span id="bmi-category" class="text-lg font-bold text-emerald-600">適中 (Normal)</span>
+                        </div>
+                    </div>
+
+                    <!-- Visual Spectrum Bar -->
+                    <div class="space-y-1">
+                        <div class="w-full h-4 bg-slate-200 rounded-full flex overflow-hidden p-0.5 shadow-inner">
+                            <div class="w-[18.5%] bg-sky-400 h-full rounded-l-full" title="體重過輕 (<18.5)"></div>
+                            <div class="w-[22%] bg-emerald-500 h-full" title="正常範圍 (18.5-24)"></div>
+                            <div class="w-[12%] bg-amber-400 h-full" title="體重過重 (24-27)"></div>
+                            <div class="w-[12%] bg-orange-400 h-full" title="輕度肥胖 (27-30)"></div>
+                            <div class="w-[18%] bg-rose-500 h-full" title="中度肥胖 (30-35)"></div>
+                            <div class="w-[17.5%] bg-purple-600 h-full rounded-r-full" title="重度肥胖 (≥35)"></div>
+                        </div>
+                        <!-- Range Legend Labels -->
+                        <div class="flex justify-between text-[10px] font-bold text-slate-600 px-1">
+                            <span>18.5</span>
+                            <span>24</span>
+                            <span>27</span>
+                            <span>30</span>
+                            <span>35</span>
+                        </div>
+                    </div>
+
+                    <!-- Standard Categories Reference -->
+                    <p id="health-advice" class="text-xs font-semibold text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                        恭喜！您的體態非常標準，請繼續保持均衡飲食與規律運動習慣。
+                    </p>
+                </div>
+            </div>
+
+            <!-- Health Action & Daily Calorie Recommendations -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Calorie Card -->
+                <div class="glass-card p-5 rounded-3xl shadow-lg border-l-4 border-teal-500 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-2xl bg-teal-100 text-teal-600 flex items-center justify-center text-2xl font-black">
+                        <i class="fa-solid fa-utensils"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-500">每日建議攝取熱量</div>
+                        <div id="calorie-recommend" class="text-xl font-black text-slate-800">1,800 kcal</div>
+                        <div class="text-[10px] text-teal-700 font-medium">基於中等活動量估算</div>
+                    </div>
+                </div>
+
+                <!-- Daily Challenge Action -->
+                <div class="glass-card p-5 rounded-3xl shadow-lg border-l-4 border-emerald-500 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl font-black">
+                            <i class="fa-solid fa-bottle-water"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-500">每日健康挑戰</div>
+                            <div class="text-sm font-black text-slate-800">喝足 2,000cc 水</div>
+                        </div>
+                    </div>
+                    <button id="btn-water-challenge" class="bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow">
+                        +30 分
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full text-center p-4 text-xs font-semibold text-slate-600 glass-card mt-6">
+        張丞佑SDGs 健康與福祉專案 | 衛福部國民健康署 BMI 標準推廣
+    </footer>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // Game State
+        let currentHeight = 168;
+        let currentWeight = 62;
+        let currentBMI = 22.0;
+        let totalScore = 0;
+        let quizIndex = 0;
+
+        // Elements DOM
+        const heightInput = document.getElementById('height-input');
+        const heightSlider = document.getElementById('height-slider');
+        const weightInput = document.getElementById('weight-input');
+        const weightSlider = document.getElementById('weight-slider');
+        const btnCalculate = document.getElementById('btn-calculate');
+        const btnReset = document.getElementById('btn-reset');
+        
+        const scoreDisplay = document.getElementById('score-display');
+        const rankDisplay = document.getElementById('rank-display');
+        const headerBmiDisplay = document.getElementById('header-bmi-display');
+        
+        const bmiValue = document.getElementById('bmi-value');
+        const bmiCategory = document.getElementById('bmi-category');
+        const avatarBox = document.getElementById('avatar-box');
+        const avatarIcon = document.getElementById('avatar-icon');
+        const avatarStatusTag = document.getElementById('avatar-status-tag');
+        const healthAdvice = document.getElementById('health-advice');
+        const calorieRecommend = document.getElementById('calorie-recommend');
+        const btnWaterChallenge = document.getElementById('btn-water-challenge');
+
+        // Quiz DOM
+        const quizQuestion = document.getElementById('quiz-question');
+        const quizOptions = document.getElementById('quiz-options');
+        const quizStatus = document.getElementById('quiz-status');
+
+        // Web Audio Synthesizer
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+        }
+
+        function playSound(type) {
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'calc') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.15);
+                } else if (type === 'win') {
+                    const now = audioCtx.currentTime;
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start();
+                    osc.stop(now + 0.4);
+                }
+            } catch (e) {}
+        }
+
+        // Quiz Data
+        const QUIZ_DATA = [
+            {
+                q: "衛福部建議成人正常標準的 BMI 範圍是多少？",
+                options: ["18.5 - 24.0", "15.0 - 20.0", "24.0 - 27.0", "27.0 - 30.0"],
+                ans: 0
+            },
+            {
+                q: "當 BMI 大於等於多少時，在台灣標準屬於「肥胖」？",
+                options: ["24", "27", "30", "35"],
+                ans: 1
+            },
+            {
+                q: "想維持健康 BMI，每週建議進行多少分鐘中強度運動？",
+                options: ["60 分鐘", "150 分鐘", "300 分鐘", "450 分鐘"],
+                ans: 1
+            }
+        ];
+
+        // Synchronize Height & Weight Inputs
+        function syncInputs() {
+            heightInput.addEventListener('input', (e) => {
+                currentHeight = parseFloat(e.target.value) || 168;
+                heightSlider.value = currentHeight;
+            });
+            heightSlider.addEventListener('input', (e) => {
+                currentHeight = parseFloat(e.target.value);
+                heightInput.value = currentHeight;
+            });
+
+            weightInput.addEventListener('input', (e) => {
+                currentWeight = parseFloat(e.target.value) || 62;
+                weightSlider.value = currentWeight;
+            });
+            weightSlider.addEventListener('input', (e) => {
+                currentWeight = parseFloat(e.target.value);
+                weightInput.value = currentWeight;
+            });
+        }
+
+        // Calculate BMI & Update Avatar/Stats
+        function calculateBMI() {
+            playSound('calc');
+
+            const heightM = currentHeight / 100;
+            currentBMI = parseFloat((currentWeight / (heightM * heightM)).toFixed(1));
+
+            // Update BMI text
+            bmiValue.innerText = currentBMI;
+            headerBmiDisplay.innerText = currentBMI;
+
+            // Classify according to Taiwan MOHW standards
+            let category = '';
+            let advice = '';
+            let calorie = Math.round(currentWeight * 30);
+            let iconClass = '';
+            let iconColor = '';
+            let tagBg = '';
+            let earnedPoints = 0;
+
+            if (currentBMI < 18.5) {
+                category = '體重過輕 (Underweight)';
+                advice = '您的體重偏輕，建議適度增加營養攝取，搭配肌肉力量訓練改善體態。';
+                iconClass = 'fa-face-frown';
+                iconColor = 'text-sky-500';
+                tagBg = 'bg-sky-500';
+                earnedPoints = 20;
+            } else if (currentBMI >= 18.5 && currentBMI < 24) {
+                category = '適中健康 (Normal)';
+                advice = '太棒了！您的 BMI 處於黃金正常範圍，請保持規律運動與均衡飲食！';
+                iconClass = 'fa-face-laugh-beam';
+                iconColor = 'text-emerald-500';
+                tagBg = 'bg-emerald-500';
+                earnedPoints = 50; // High reward for healthy BMI
+            } else if (currentBMI >= 24 && currentBMI < 27) {
+                category = '體重過重 (Overweight)';
+                advice = '您的體重稍微過重，建議減少高熱量零食，增加每日步數與有氧運動。';
+                iconClass = 'fa-face-meh';
+                iconColor = 'text-amber-500';
+                tagBg = 'bg-amber-500';
+                earnedPoints = 30;
+            } else if (currentBMI >= 27 && currentBMI < 30) {
+                category = '輕度肥胖 (Mild Obesity)';
+                advice = '已進入輕度肥胖區間，建議調整飲食結構（少油少糖），規律進行運動。';
+                iconClass = 'fa-face-rolling-eyes';
+                iconColor = 'text-orange-500';
+                tagBg = 'bg-orange-500';
+                earnedPoints = 15;
+            } else if (currentBMI >= 30 && currentBMI < 35) {
+                category = '中度肥胖 (Moderate Obesity)';
+                advice = '注意心血管健康，建議諮詢醫師或營養師，制定階段性減重計畫。';
+                iconClass = 'fa-face-sad-tear';
+                iconColor = 'text-rose-500';
+                tagBg = 'bg-rose-500';
+                earnedPoints = 10;
+            } else {
+                category = '重度肥胖 (Severe Obesity)';
+                advice = '建議尋求專業醫療團隊與營養師協助，開始積極健康轉型！';
+                iconClass = 'fa-face-dizzy';
+                iconColor = 'text-purple-600';
+                tagBg = 'bg-purple-600';
+                earnedPoints = 5;
+            }
+
+            // Update UI fields
+            bmiCategory.innerText = category;
+            bmiCategory.className = `text-lg font-bold ${iconColor}`;
+            healthAdvice.innerText = advice;
+            calorieRecommend.innerText = `${calorie.toLocaleString()} kcal`;
+
+            // Update Character Avatar
+            avatarIcon.className = `fa-solid ${iconClass}`;
+            avatarBox.className = `w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-slate-100 border-4 border-white shadow-md flex items-center justify-center text-6xl ${iconColor} animate-float transition-all duration-300`;
+            avatarStatusTag.innerText = category.split(' ')[0];
+            avatarStatusTag.className = `mt-2 text-xs font-black px-3 py-1 rounded-full ${tagBg} text-white shadow-sm`;
+
+            // Add Points & Update Rank
+            addScore(earnedPoints);
+        }
+
+        // Score & Rank System
+        function addScore(points) {
+            totalScore += points;
+            scoreDisplay.innerText = totalScore;
+
+            // Show score floating animation
+            showFloatingScore(`+${points}`);
+
+            // Update Rank
+            let rank = '🌱 健康萌芽';
+            if (totalScore >= 300) rank = '👑 健康大師';
+            else if (totalScore >= 180) rank = '🔥 活力達人';
+            else if (totalScore >= 80) rank = '🏃 運動新手';
+
+            rankDisplay.innerText = rank;
+        }
+
+        function showFloatingScore(text) {
+            const popup = document.createElement('div');
+            popup.className = 'score-float text-xl font-black';
+            popup.innerText = text;
+            popup.style.left = `${btnCalculate.getBoundingClientRect().left + 40}px`;
+            popup.style.top = `${btnCalculate.getBoundingClientRect().top - 20}px`;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 800);
+        }
+
+        // Quiz Loader
+        function loadQuiz() {
+            const quiz = QUIZ_DATA[quizIndex];
+            quizStatus.innerText = `第 ${quizIndex + 1} / ${QUIZ_DATA.length} 題`;
+            quizQuestion.innerText = quiz.q;
+            quizOptions.innerHTML = '';
+
+            quiz.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full bg-white hover:bg-amber-100 text-slate-800 font-bold p-2 rounded-xl border border-amber-200 transition text-left active:scale-95';
+                btn.innerText = `${idx + 1}. ${opt}`;
+                btn.onclick = () => checkQuizAnswer(idx);
+                quizOptions.appendChild(btn);
+            });
+        }
+
+        function checkQuizAnswer(selectedIdx) {
+            const quiz = QUIZ_DATA[quizIndex];
+            if (selectedIdx === quiz.ans) {
+                playSound('win');
+                addScore(50);
+                alert('🎉 答對了！獲得 +50 健康積分！');
+            } else {
+                alert('❌ 差一點點，再接再厲！');
+            }
+            quizIndex = (quizIndex + 1) % QUIZ_DATA.length;
+            loadQuiz();
+        }
+
+        // Water Challenge Click
+        btnWaterChallenge.onclick = () => {
+            playSound('win');
+            addScore(30);
+            btnWaterChallenge.disabled = true;
+            btnWaterChallenge.innerText = '已達成';
+            btnWaterChallenge.className = 'bg-slate-300 text-slate-600 text-xs font-bold px-3 py-2 rounded-xl cursor-not-allowed';
+        };
+
+        // Reset App State
+        btnReset.onclick = () => {
+            currentHeight = 168;
+            currentWeight = 62;
+            heightInput.value = 168;
+            heightSlider.value = 168;
+            weightInput.value = 62;
+            weightSlider.value = 62;
+            totalScore = 0;
+            scoreDisplay.innerText = '0';
+            rankDisplay.innerText = '🌱 健康萌芽';
+            btnWaterChallenge.disabled = false;
+            btnWaterChallenge.innerText = '+30 分';
+            btnWaterChallenge.className = 'bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white text-xs font-bold px-3 py-2 rounded-xl transition shadow';
+            calculateBMI();
+        };
+
+        btnCalculate.onclick = calculateBMI;
+
+        // Initialize
+        window.onload = () => {
+            syncInputs();
+            loadQuiz();
+            calculateBMI();
+        };
+    </script>
+</body>
+</html>
